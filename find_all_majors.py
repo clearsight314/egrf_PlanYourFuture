@@ -1,23 +1,42 @@
 # from anytree import Node, RenderTree # manages the tree data structure
 import pandas as pd # dataframes
-import sys
-reqs = pd.read_csv("audit_requirements-2026.csv")
-# print(reqs.columns.tolist())
-reqs.columns = ['Program_ID', 'Program_Name', 'Program_Code', 'Audit_ID', 'Audit_Name', 
-                'Audit_Start_Entry_Year', 'Audit_End_Entry_Year', 'Parent_Requirement_ID', 
-                'Parent_Requirement_Name', 'Requirement_ID', 'Requirement_Name', 
-                'Is_Uni_Req', 'Subrequirement_Level', 'Constraint'] # remove spaces
-#print(reqs)
+import hashlib
+import re
 
-hash_set = set()
+reqs = pd.read_csv("audit_requirements-2026.csv", usecols=["Program Name"])
+# print(reqs.columns.tolist())
+
+hash_set = set(reqs["Program Name"])
+#get rid of PHD's from set
+hash_set = {item for item in hash_set if "PhD" not in item and "PHD" not in item}
+#delete all columns that should be deleted
+hash_set = {item for item in hash_set if "DELETE" not in item}
+hash_set = {item for item in hash_set if "MS" not in item and "MA" not in item and "ME" not in item }
+hash_set_2nd_major = {item for item in hash_set if "2m" in item}
+
+
 def find_all_majors():
-    for Program_Name, col_data in reqs.items():
-        if col_data in hash_set:
-            continue
-        else:
-            hash_set.add(col_data)
-    print(hash_set)
+    sorted_list = sorted(hash_set)
+    #print(hash_set)
+    #print(sorted_list)
+    #print(hash_set_2nd_major)
+    print(sorted_list)
+
+def get_parentheses_info():
+    paren_list = sorted([
+        m.group(1)
+        for item in hash_set
+        for m in [re.search(r'\(([^)]+)\)', item)]
+        if m
+    ])
+    paren_list_unknown = sorted({item for item in paren_list if "Minor" not in item and "BA" not in item and "BS" not in item and '2' not in item})
+    #print(paren_list)
+    print(paren_list_unknown)
+    return paren_list
+    
+    
 
 
 if __name__ == "__main__":
-    find_all_majors()
+    #find_all_majors()
+    get_parentheses_info()
