@@ -1,0 +1,104 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+
+#top-bar {
+  background: #1a1a2e;
+  padding: 12px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.dropdown-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.dropdown-group label {
+  color: #a0aec0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dropdown-group select {
+  background: #16213e;
+  color: #e2e8f0;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.dropdown-group select:focus { border-color: #4299e1; }
+.dropdown-group select option { background: #1a1a2e; }
+
+#main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+#placeholder { text-align: center; color: #718096; }
+#placeholder h2 { font-size: 22px; margin-bottom: 10px; color: #4a5568; }
+#placeholder p { font-size: 15px; }
+
+#loading { text-align: center; color: #718096; font-size: 15px; }
+
+#selection-summary {
+  display: none;
+  background: white;
+  border-radius: 12px;
+  padding: 32px 40px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  max-width: 600px;
+  width: 100%;
+}
+
+#selection-summary h2 {
+  font-size: 20px;
+  color: #1a1a2e;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.summary-row:last-child { border-bottom: none; }
+
+.summary-label {
+  font-size: 13px;
+  color: #718096;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.summary-value {
+  font-size: 14px;
+  color: #2d3748;
+  font-weight: 500;
+  text-align: right;
+  max-width: 340px;
+}
+
+.summary-value.empty { color: #cbd5e0; font-style: italic; }
