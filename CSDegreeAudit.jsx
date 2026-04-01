@@ -32,14 +32,11 @@ const DegreeAuditUI = () => {
     const [auditData, setAuditData] = useState([]);
 
     useEffect(() => {
-        console.log("Degree audit component good");
         fetch("./uva_cs_audit.json")
             .then((res) => res.json())
             .then((data) => setAuditData(data))
             .catch((err) => console.error("Error loading JSON:", err));
     }, []);
-
-    if (auditData.length === 0) return <div>Loading UVA Audit Data...</div>;
 
     return (
         <div>
