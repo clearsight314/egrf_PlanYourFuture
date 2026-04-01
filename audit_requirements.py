@@ -165,7 +165,7 @@ def get_classes(req_row, current_row, current_list=None): # recursive approach--
     curr_level = curr_data.Subrequirement_Level
     curr_name = curr_data.Requirement_Name
     curr_kind = classify_requirement(curr_data.Constraint)
-    if(curr_level <= req_level):
+    if(curr_data.Program_ID != req_data.Program_ID):
         return current_list
     elif curr_kind == "fulfill_all" :
         return current_list + get_classes(req_row,current_row+1)
@@ -175,8 +175,12 @@ def get_classes(req_row, current_row, current_list=None): # recursive approach--
     elif curr_kind == "fulfill_any":
         options = []
         i = current_row + 1
-        while i < len(records) and records[i].Subrequirement_Level > curr_level:
-            options.append(records[i].Requirement_Name)
+        while i < len(records) and records[i].Program_ID == curr_data.Program_ID and records[i].Subrequirement_Level > curr_level:
+            child = records[i]
+            child_kind = classify_requirement(child.Constraint)
+            if child_kind == "blank":
+                options.append(child.Requirement_Name)
+            # skip intermediate named nodes, their children will be picked up by the while loop
             i += 1
         current_list += [options]
         return current_list + get_classes(req_row, i)
