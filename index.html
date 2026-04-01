@@ -1,40 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plan Your Future</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Plan Your Future</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div id="top-bar">
+            <div class="dropdown-group">
+                <label>Major</label>
+                <select id="sel-major" onchange="updateSummary()" disabled>
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="dropdown-group">
+                <label>Minor</label>
+                <select id="sel-minor" onchange="updateSummary()" disabled>
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="dropdown-group">
+                <label>2nd Major</label>
+                <select id="sel-major2" onchange="updateSummary()" disabled>
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <div class="dropdown-group">
+                <label>2nd Minor</label>
+                <select id="sel-minor2" onchange="updateSummary()" disabled>
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+        </div>
+        <div id="main">
+            <div id="loading">Loading...</div>
+            <div id="placeholder">
+                <h2>Plan Your Future Stellic Supplement</h2>
+            </div>
+        </div>
+        <script src="app.js"></script>
+        <script
+            crossorigin
+            src="https://unpkg.com/react@18/umd/react.development.js"
+        ></script>
+        <script
+            crossorigin
+            src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+        ></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<div id="top-bar">
-  <div class="dropdown-group">
-    <label>Major</label>
-    <select id="sel-major" onchange="updateSummary()" disabled>
-      <option value="">Loading...</option>
-    </select>
-  </div>
-  <div class="dropdown-group">
-    <label>Minor</label>
-    <select id="sel-minor" onchange="updateSummary()" disabled>
-      <option value="">Loading...</option>
-    </select>
-  </div>
-  <div class="dropdown-group">
-    <label>2nd Major</label>
-    <select id="sel-major2" onchange="updateSummary()" disabled>
-      <option value="">Loading...</option>
-    </select>
-  </div>
-  <div class="dropdown-group">
-    <label>2nd Minor</label>
-    <select id="sel-minor2" onchange="updateSummary()" disabled>
-      <option value="">Loading...</option>
-    </select>
-  </div>
-</div>
+        <div id="root"></div>
+        <script type="text/babel" src="CSDegreeAudit.jsx"></script>
 
-<script src="app.js"></script>
-</body>
+        <script type="text/babel">
+            const root = ReactDOM.createRoot(document.getElementById("root"));
+            root.render(<window.DegreeAuditUI />);
+        </script>
+    </body>
 </html>
