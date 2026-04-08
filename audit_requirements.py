@@ -208,4 +208,4 @@ for i in range(len(major_classes)):
 
 print(major_classes)
 
-major_classes.to_csv('major_classes.csv') 
+major_classes.to_csv('major_classes.csv')
