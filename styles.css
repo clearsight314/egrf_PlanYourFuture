@@ -1,104 +1,272 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: sans-serif;
+    background: #f0f2f5;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
 
 #top-bar {
-  background: #1a1a2e;
-  padding: 12px 20px;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    background: #1a1a2e;
+    padding: 12px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .dropdown-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 180px;
 }
 
 .dropdown-group label {
-  color: #a0aec0;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+    color: #a0aec0;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 .dropdown-group select {
-  background: #16213e;
-  color: #e2e8f0;
-  border: 1px solid #2d3748;
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-  width: 100%;
+    background: #16213e;
+    color: #e2e8f0;
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
 }
 
-.dropdown-group select:focus { border-color: #4299e1; }
-.dropdown-group select option { background: #1a1a2e; }
+.dropdown-group select:focus {
+    border-color: #4299e1;
+}
+.dropdown-group select option {
+    background: #1a1a2e;
+}
 
 #main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 40px;
 }
 
-#placeholder { text-align: center; color: #718096; }
-#placeholder h2 { font-size: 22px; margin-bottom: 10px; color: #4a5568; }
-#placeholder p { font-size: 15px; }
+#root {
+    width: 100%;
+}
 
-#loading { text-align: center; color: #718096; font-size: 15px; }
+#placeholder {
+    text-align: center;
+    color: #718096;
+}
+#placeholder h2 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: #4a5568;
+}
+#placeholder p {
+    font-size: 15px;
+}
+
+#loading {
+    text-align: center;
+    color: #718096;
+    font-size: 15px;
+}
 
 #selection-summary {
-  display: none;
-  background: white;
-  border-radius: 12px;
-  padding: 32px 40px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-  max-width: 600px;
-  width: 100%;
+    display: none;
+    background: white;
+    border-radius: 12px;
+    padding: 32px 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    max-width: 600px;
+    width: 100%;
 }
 
 #selection-summary h2 {
-  font-size: 20px;
-  color: #1a1a2e;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 12px;
+    font-size: 20px;
+    color: #1a1a2e;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 12px;
 }
 
 .summary-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f2f5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f2f5;
 }
 
-.summary-row:last-child { border-bottom: none; }
+.summary-row:last-child {
+    border-bottom: none;
+}
 
 .summary-label {
-  font-size: 13px;
-  color: #718096;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+    font-size: 13px;
+    color: #718096;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .summary-value {
-  font-size: 14px;
-  color: #2d3748;
-  font-weight: 500;
-  text-align: right;
-  max-width: 340px;
+    font-size: 14px;
+    color: #2d3748;
+    font-weight: 500;
+    text-align: right;
+    max-width: 340px;
 }
 
-.summary-value.empty { color: #cbd5e0; font-style: italic; }
+.summary-value.empty {
+    color: #cbd5e0;
+    font-style: italic;
+}
+
+/* --- Tree Flowchart CSS --- */
+.flow-tree-container {
+    width: 100%;
+    overflow-x: auto;
+    padding: 10px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+}
+
+.flow-tree {
+    display: inline-flex;
+    text-align: left;
+}
+
+.flow-tree ul {
+    padding-top: 12px; /* Tighter vertical spacing */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding-left: 0;
+    margin: 0;
+}
+
+.flow-tree li {
+    list-style-type: none;
+    position: relative;
+    /* Extremely tight horizontal branches (1px gap) */
+    padding: 12px 1px 0 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Draw the horizontal connector lines */
+.flow-tree li::before,
+.flow-tree li::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 50%;
+    border-top: 1px solid #94a3b8; /* Thinner lines */
+    width: 50%;
+    height: 12px;
+}
+
+/* Draw the vertical lines dropping down to the children */
+.flow-tree li::after {
+    right: auto;
+    left: 50%;
+    border-left: 1px solid #94a3b8;
+}
+
+/* Clean up lines for single children */
+.flow-tree li:only-child::after,
+.flow-tree li:only-child::before {
+    display: none;
+}
+.flow-tree li:only-child {
+    padding-top: 0;
+}
+
+/* Clean up lines for the edges of the branches */
+.flow-tree li:first-child::before,
+.flow-tree li:last-child::after {
+    border: 0 none;
+}
+.flow-tree li:last-child::before {
+    border-right: 1px solid #94a3b8;
+    border-radius: 0 3px 0 0;
+}
+.flow-tree li:first-child::after {
+    border-radius: 3px 0 0 0;
+}
+
+/* Vertical line coming down from the parent node */
+.flow-tree ul ul::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    border-left: 1px solid #94a3b8;
+    width: 0;
+    height: 12px;
+    transform: translateX(-50%);
+}
+
+/* The actual visual box for the course/requirement */
+.node-box {
+    border: 1px solid #1e293b; /* Thinner borders */
+    background-color: #ffffff;
+    border-radius: 4px; /* Less rounding to save space */
+    padding: 4px 2px; /* Extremely tight padding */
+    text-align: center;
+    /* Maximum compactness */
+    min-width: 45px;
+    max-width: 75px;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    word-wrap: break-word;
+    font-family: system-ui, sans-serif;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 8px; /* Tiny text to prevent wrap expansions */
+    line-height: 1.1;
+    letter-spacing: -0.2px; /* Squeeze letters slightly */
+    transition: all 0.2s ease;
+}
+
+.node-box:hover {
+    box-shadow: 0 6px 10px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    z-index: 20; /* Pop to front on hover since they are packed tightly */
+}
+
+/* The downward pointing arrow head */
+.arrow-down {
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 4px solid #94a3b8;
+    z-index: 11;
+}
