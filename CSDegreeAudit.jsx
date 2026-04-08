@@ -1,30 +1,31 @@
 const { useState, useEffect } = React;
 
-const RequirementNode = ({ node }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+const RequirementNode = ({ node, isRoot = false, color = "#1e293b" }) => {
     const hasChildren = node.children && node.children.length > 0;
-    const reqName = node["Requirement Name"] || "Unnamed Requirement";
+    const reqName =
+        node["Requirement Name"] ||
+        node["Requirement ID"] ||
+        "Unnamed Requirement";
 
     return (
-        <div>
-            <div onClick={() => hasChildren && setIsExpanded(!isExpanded)}>
-                {hasChildren && <span>{isExpanded ? "▼" : "▶"}</span>}
-                {!hasChildren && <span></span>}
-
-                <span>{reqName}</span>
+        <li>
+            <div className="node-box" style={{ borderColor: color }}>
+                {!isRoot && <div className="arrow-down"></div>}
+                {reqName}
             </div>
 
-            {isExpanded && hasChildren && (
-                <div>
+            {hasChildren && (
+                <ul>
                     {node.children.map((childNode) => (
                         <RequirementNode
                             key={childNode["Requirement ID"]}
                             node={childNode}
+                            color={color}
                         />
                     ))}
-                </div>
+                </ul>
             )}
-        </div>
+        </li>
     );
 };
 
@@ -38,15 +39,114 @@ const DegreeAuditUI = () => {
             .catch((err) => console.error("Error loading JSON:", err));
     }, []);
 
+    if (auditData.length === 0) {
+        return (
+            <div style={{ padding: "20px", color: "#64748b" }}>
+                Loading UVA Audit Data...
+            </div>
+        );
+    }
+
+    const rootNode = auditData[0];
+    const topLevelCategories = rootNode.children || [];
+
+    const engineeringReqs = topLevelCategories.find(
+        (node) =>
+            node["Requirement Name"] ===
+            "Engineering Universal Curriculum Requirements",
+    );
+
+    const csReqs = topLevelCategories.filter(
+        (node) =>
+            node["Requirement Name"] !==
+            "Engineering Universal Curriculum Requirements",
+    );
+
     return (
-        <div>
-            <h2>Computer Science (B.S.) Audit</h2>
-            {auditData.map((rootNode) => (
-                <RequirementNode
-                    key={rootNode["Requirement ID"]}
-                    node={rootNode}
-                />
-            ))}
+        <div
+            style={{
+                fontFamily: "system-ui, sans-serif",
+                padding: "40px",
+                maxWidth: "100%",
+                boxSizing: "border-box",
+            }}
+        >
+            <h1
+                style={{
+                    fontSize: "28px",
+                    fontWeight: "bold",
+                    color: "#0f172a",
+                    marginBottom: "40px",
+                    borderBottom: "2px solid #cbd5e1",
+                    paddingBottom: "16px",
+                }}
+            >
+                Computer Science (B.S.) Prerequisite Map
+            </h1>
+
+            {/* --- ENGINEERING TREE --- */}
+            <h2
+                style={{
+                    fontSize: "20px",
+                    fontWeight: "bold",
+                    color: "#1e3a8a",
+                    marginBottom: "16px",
+                }}
+            >
+                General Engineering Pathways
+            </h2>
+            <div className="flow-tree-container">
+                <div className="flow-tree">
+                    <ul>
+                        {engineeringReqs ? (
+                            <RequirementNode
+                                key={engineeringReqs["Requirement ID"]}
+                                node={engineeringReqs}
+                                isRoot={true}
+                                color="#1e3a8a"
+                            />
+                        ) : (
+                            <p>No engineering requirements found.</p>
+                        )}
+                    </ul>
+                </div>
+            </div>
+
+            {/* --- COMPUTER SCIENCE TREE --- */}
+            <h2
+                style={{
+                    fontSize: "20px",
+                    fontWeight: "bold",
+                    color: "#ea580c",
+                    marginTop: "60px",
+                    marginBottom: "16px",
+                }}
+            >
+                CS Major Pathways
+            </h2>
+            <div className="flow-tree-container">
+                <div className="flow-tree">
+                    <ul>
+                        <li>
+                            <div
+                                className="node-box"
+                                style={{ borderColor: "#ea580c" }}
+                            >
+                                CS Core Curriculum
+                            </div>
+                            <ul>
+                                {csReqs.map((node) => (
+                                    <RequirementNode
+                                        key={node["Requirement ID"]}
+                                        node={node}
+                                        color="#ea580c"
+                                    />
+                                ))}
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 };
