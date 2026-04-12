@@ -30,37 +30,72 @@ const RequirementNode = ({ node, isRoot = false, color = "#1e293b" }) => {
 };
 
 const DegreeAuditUI = () => {
-    const [auditData, setAuditData] = useState([]);
+    const [allAuditData, setAllAuditData] = useState(null);
+    const [selectedMajorName, setSelectedMajorName] = useState("");
 
     useEffect(() => {
-        fetch("./uva_cs_audit_cleaned.json")
+        fetch("./all_majors_audit.json")
             .then((res) => res.json())
-            .then((data) => setAuditData(data))
+            .then((data) => setAllAuditData(data))
             .catch((err) => console.error("Error loading JSON:", err));
+
+        const sel = document.getElementById("sel-major");
+        if (sel) {
+            const handler = () => setSelectedMajorName(sel.value);
+            sel.addEventListener("change", handler);
+            return () => sel.removeEventListener("change", handler);
+        }
     }, []);
 
-    if (auditData.length === 0) {
+    if (!allAuditData) {
         return (
             <div style={{ padding: "20px", color: "#64748b" }}>
-                Loading UVA Audit Data...
+                Loading audit data...
             </div>
         );
     }
 
-    const rootNode = auditData[0];
-    const topLevelCategories = rootNode.children || [];
+    if (!selectedMajorName) {
+        return (
+            <div style={{ padding: "20px", color: "#64748b" }}>
+                Select a major to view its requirements.
+            </div>
+        );
+    }
 
-    const engineeringReqs = topLevelCategories.find(
-        (node) =>
-            node["Requirement Name"] ===
-            "Engineering Universal Curriculum Requirements",
+    const programEntry = Object.values(allAuditData).find(
+        (p) => p.program_name === selectedMajorName,
     );
 
-    const csReqs = topLevelCategories.filter(
-        (node) =>
-            node["Requirement Name"] !==
-            "Engineering Universal Curriculum Requirements",
-    );
+    if (!programEntry) {
+        return (
+            <div style={{ padding: "20px", color: "#64748b" }}>
+                No audit data found for {selectedMajorName}.
+            </div>
+        );
+    }
+
+    const tree = programEntry.tree;
+    const rootNode = tree[0];
+    const topLevelCategories = rootNode?.children || [];
+
+    const isGeneralReq = (node) => {
+        const name = node["Requirement Name"] || "";
+        return name.includes("Universal Curriculum") || name.includes("General Education");
+    };
+
+    const generalReqs = topLevelCategories.filter(isGeneralReq);
+    const majorReqs = topLevelCategories.filter((n) => !isGeneralReq(n));
+
+    const getGeneralLabel = () => {
+        if (generalReqs.some((n) => (n["Requirement Name"] || "").includes("Engineering Universal"))) {
+            return "General Engineering Requirements";
+        }
+        if (generalReqs.some((n) => (n["Requirement Name"] || "").includes("Architecture Universal"))) {
+            return "General Architecture Requirements";
+        }
+        return "General Education Requirements";
+    };
 
     return (
         <div
@@ -81,72 +116,52 @@ const DegreeAuditUI = () => {
                     paddingBottom: "16px",
                 }}
             >
-                Computer Science (B.S.) Prerequisite Map
+                {programEntry.program_name} Requirements
             </h1>
 
-            {/* --- ENGINEERING TREE --- */}
-            <h2
-                style={{
-                    fontSize: "20px",
-                    fontWeight: "bold",
-                    color: "#1e3a8a",
-                    marginBottom: "16px",
-                }}
-            >
-                General Engineering Pathways
-            </h2>
-            <div className="flow-tree-container">
-                <div className="flow-tree">
-                    <ul>
-                        {engineeringReqs ? (
-                            <RequirementNode
-                                key={engineeringReqs["Requirement ID"]}
-                                node={engineeringReqs}
-                                isRoot={true}
-                                color="#1e3a8a"
-                            />
-                        ) : (
-                            <p>No engineering requirements found.</p>
-                        )}
-                    </ul>
-                </div>
-            </div>
-
-            {/* --- COMPUTER SCIENCE TREE --- */}
-            <h2
-                style={{
-                    fontSize: "20px",
-                    fontWeight: "bold",
-                    color: "#ea580c",
-                    marginTop: "60px",
-                    marginBottom: "16px",
-                }}
-            >
-                CS Major Pathways
-            </h2>
-            <div className="flow-tree-container">
-                <div className="flow-tree">
-                    <ul>
-                        <li>
-                            <div
-                                className="node-box"
-                                style={{ borderColor: "#ea580c" }}
-                            >
-                                CS Core Curriculum
-                            </div>
+            {generalReqs.length > 0 && (
+                <>
+                    <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1e3a8a", marginBottom: "16px" }}>
+                        {getGeneralLabel()}
+                    </h2>
+                    <div className="flow-tree-container">
+                        <div className="flow-tree">
                             <ul>
-                                {csReqs.map((node) => (
+                                {generalReqs.map((node) => (
                                     <RequirementNode
                                         key={node["Requirement ID"]}
                                         node={node}
+                                        isRoot={true}
+                                        color="#1e3a8a"
+                                    />
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {majorReqs.length > 0 && (
+                <>
+                    <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#ea580c", marginTop: generalReqs.length > 0 ? "60px" : "0", marginBottom: "16px" }}>
+                        {programEntry.program_name} Pathways
+                    </h2>
+                    <div className="flow-tree-container">
+                        <div className="flow-tree">
+                            <ul>
+                                {majorReqs.map((node) => (
+                                    <RequirementNode
+                                        key={node["Requirement ID"]}
+                                        node={node}
+                                        isRoot={true}
                                         color="#ea580c"
                                     />
                                 ))}
                             </ul>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

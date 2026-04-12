@@ -28,3 +28,7 @@ loadData().catch((err) => {
     document.getElementById("loading").textContent =
         "Failed to load data: " + err.message;
 });
+
+function updateSummary() {
+    // Handled by event listeners inside DegreeAuditUI
+}
