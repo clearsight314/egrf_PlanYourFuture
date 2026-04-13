@@ -2,6 +2,8 @@ const { useState, useEffect } = React;
 
 const RequirementNode = ({ node, isRoot = false, color = "#1e293b" }) => {
     const hasChildren = node.children && node.children.length > 0;
+    const [isExpanded, setIsExpanded] = useState(isRoot);
+    const [isTaken, setIsTaken] = useState(false);
     const reqName =
         node["Requirement Name"] ||
         node["Requirement ID"] ||
@@ -9,12 +11,54 @@ const RequirementNode = ({ node, isRoot = false, color = "#1e293b" }) => {
 
     return (
         <li>
-            <div className="node-box" style={{ borderColor: color }}>
+            <div
+                className="node-box"
+                style={{
+                    borderColor: isTaken ? "#16a34a" : color,
+                    cursor: "pointer",
+                    backgroundColor: isTaken
+                        ? "#dcfce7"
+                        : hasChildren && !isExpanded
+                          ? "#f8fafc"
+                          : "#ffffff",
+                    color: isTaken ? "#14532d" : "inherit",
+                    borderBottomWidth:
+                        hasChildren && !isExpanded ? "4px" : "1px",
+                }}
+                onClick={() => {
+                    if (hasChildren) {
+                        setIsExpanded(!isExpanded);
+                    } else {
+                        setIsTaken(!isTaken);
+                    }
+                }}
+            >
                 {!isRoot && <div className="arrow-down"></div>}
-                {reqName}
-            </div>
+                <div>
+                    {isTaken && (
+                        <span
+                            style={{ marginRight: "4px", fontWeight: "bold" }}
+                        >
+                            ✓
+                        </span>
+                    )}
+                    {reqName}
+                </div>
 
-            {hasChildren && (
+                {hasChildren && (
+                    <div
+                        style={{
+                            fontSize: "9px",
+                            marginTop: "4px",
+                            color: color,
+                            fontWeight: "bold",
+                        }}
+                    >
+                        {isExpanded ? "▲ Collapse" : "▼ Expand"}
+                    </div>
+                )}
+            </div>
+            {isExpanded && hasChildren && (
                 <ul>
                     {node.children.map((childNode) => (
                         <RequirementNode
