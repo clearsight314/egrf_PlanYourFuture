@@ -72,8 +72,8 @@ for node in graph.nodes:
     nodes_export.append({
         "id": str(node),
         "layer": graph.nodes[node].get('layer', 0),
-        "x": float(-x),
-        "y": float(-y)
+        "x": float(x),
+        "y": float(y)
     })
     
 links_export = [{"source": str(u), "target": str(v)} for u, v in graph.edges]

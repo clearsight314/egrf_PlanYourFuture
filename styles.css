@@ -263,3 +263,84 @@ body {
     border-top: 4px solid #94a3b8;
     z-index: 11;
 }
+
+/* --- Course Graph DAG CSS --- */
+.graph-wrapper {
+    font-family: system-ui, sans-serif;
+    padding: 40px;
+    background-color: #f8fafc;
+}
+
+.graph-header {
+    font-size: 28px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 20px;
+}
+
+.graph-error-notice {
+    padding: 20px;
+    color: #b91c1c;
+    background-color: #fef2f2;
+    border: 1px solid #f87171;
+    border-radius: 8px;
+}
+
+.graph-canvas-container {
+    position: relative;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    /* overflow: auto;
+    margin: 0 auto; */
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    overflow-x: auto;
+}
+
+.graph-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.graph-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border: 2px solid #ea580c;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-weight: bold;
+    color: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    z-index: 10;
+    min-width: 65px;
+    font-size: 12px;
+    text-align: center;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.graph-node:hover {
+    box-shadow: 0 6px 10px -3px rgba(0, 0, 0, 0.1);
+    transform: translate(-50%, calc(-50% - 2px));
+    z-index: 20;
+}
+
+.graph-node.taken {
+    border-color: #16a34a;
+    background-color: #dcfce7;
+    color: #14532d;
+}
+
+.graph-node .checkmark {
+    margin-right: 4px;
+    font-weight: bold;
+}
