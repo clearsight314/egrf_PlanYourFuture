@@ -257,6 +257,48 @@ body {
     z-index: 20; /* Pop to front on hover since they are packed tightly */
 }
 
+/* Elective nodes — purple accent, pointer cursor */
+.node-box.elective-node {
+    border-style: dashed;
+    border-color: #7c3aed !important;
+    background: #faf5ff;
+    color: #5b21b6;
+    cursor: pointer;
+}
+
+.node-box.elective-node:hover {
+    background: #ede9fe;
+    box-shadow: 0 6px 12px -3px rgba(124, 58, 237, 0.25);
+}
+
+/* Courses that were added from the elective panel */
+.node-box.added-elective-node {
+    border-color: #7c3aed !important;
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+/* "Fulfill any N of" choice nodes — amber accent */
+.node-box.choice-node {
+    border-style: dashed;
+    border-color: #d97706 !important;
+    background: #fffbeb;
+    color: #92400e;
+    cursor: pointer;
+}
+
+.node-box.choice-node:hover {
+    background: #fef3c7;
+    box-shadow: 0 6px 12px -3px rgba(217, 119, 6, 0.25);
+}
+
+/* Children picked from a choice node */
+.node-box.picked-choice-node {
+    border-color: #d97706 !important;
+    background: #fef3c7;
+    color: #92400e;
+}
+
 /* The downward pointing arrow head */
 .arrow-down {
     position: absolute;
