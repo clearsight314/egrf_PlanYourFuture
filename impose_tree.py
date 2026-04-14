@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import pandas
 import ast
+import json
 
 overall_reqs = pandas.read_csv("major_classes.csv")
 
@@ -61,6 +62,26 @@ for node in nx.topological_sort(graph): # networkx can do this
         graph.nodes[node]['layer'] = 0
     else:
         graph.nodes[node]['layer'] = max(graph.nodes[p]['layer'] for p in predecessors) + 1
+
+# Export the file as json
+pos = nx.multipartite_layout(graph, subset_key='layer', align='horizontal')
+
+nodes_export = []
+for node in graph.nodes:
+    x, y = pos[node]
+    nodes_export.append({
+        "id": str(node),
+        "layer": graph.nodes[node].get('layer', 0),
+        "x": float(x),
+        "y": float(y)
+    })
+    
+links_export = [{"source": str(u), "target": str(v)} for u, v in graph.edges]
+
+with open("cs_course_graph.json", "w") as f:
+    json.dump({"nodes": nodes_export, "links": links_export}, f, indent=4)
+    
+print("Export graph as cs_course_graph.json")
 
 plt.figure(figsize=(12, 8))
 pos = nx.multipartite_layout(graph, subset_key='layer', align='horizontal')
