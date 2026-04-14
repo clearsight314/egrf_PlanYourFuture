@@ -292,8 +292,6 @@ body {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    /* overflow: auto;
-    margin: 0 auto; */
     width: fit-content;
     max-width: 100%;
     margin: 0 auto;
@@ -315,14 +313,14 @@ body {
     background-color: #ffffff;
     border: 2px solid #ea580c;
     border-radius: 6px;
-    padding: 6px 8px;
+    padding: 4px 6px;
     font-weight: bold;
     color: #1e293b;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     cursor: pointer;
     z-index: 10;
-    min-width: 65px;
-    font-size: 12px;
+    min-width: 55px;
+    font-size: 10px;
     text-align: center;
     transition: all 0.2s ease;
     white-space: nowrap;

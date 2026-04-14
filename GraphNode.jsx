@@ -50,9 +50,9 @@ const CourseGraph = () => {
     );
     const numLayers = Object.keys(nodesByLayer).length;
 
-    const NODE_SPACING_X = 140;
-    const LAYER_SPACING_Y = 150;
-    const PADDING = 80;
+    const NODE_SPACING_X = 100;
+    const LAYER_SPACING_Y = 120;
+    const PADDING = 65;
 
     const canvasWidth = Math.max(
         1000,
@@ -92,52 +92,60 @@ const CourseGraph = () => {
     return (
         <div className="graph-wrapper">
             <h1 className="graph-header">CS Prerequisites</h1>
+            <div className="graph-canvas-container">
+                <div
+                    style={{
+                        position: "relative",
+                        width: `${canvasWidth}px`,
+                        height: `${canvasHeight}px`,
+                        margin: "0 auto",
+                    }}
+                >
+                    <svg
+                        className="graph-svg-layer"
+                        style={{ width: "100%", height: "100%" }}
+                    >
+                        <defs>
+                            <marker
+                                id="arrowhead"
+                                markerWidth="10"
+                                markerHeight="7"
+                                refX="9"
+                                refY="3.5"
+                                orient="auto"
+                            >
+                                <polygon
+                                    points="0 0, 10 3.5, 0 7"
+                                    fill="#94a3b8"
+                                />
+                            </marker>
+                        </defs>
 
-            <div
-                className="graph-canvas-container"
-                style={{
-                    width: `${canvasWidth}px`,
-                    height: `${canvasHeight}px`,
-                }}
-            >
-                <svg className="graph-svg-layer">
-                    <defs>
-                        <marker
-                            id="arrowhead"
-                            markerWidth="10"
-                            markerHeight="7"
-                            refX="9"
-                            refY="3.5"
-                            orient="auto"
-                        >
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
-                        </marker>
-                    </defs>
+                        {links.map((link, i) => {
+                            const sourceNode = nodeLookup[link.source];
+                            const targetNode = nodeLookup[link.target];
 
-                    {links.map((link, i) => {
-                        const sourceNode = nodeLookup[link.source];
-                        const targetNode = nodeLookup[link.target];
+                            if (!sourceNode || !targetNode) return null;
 
-                        if (!sourceNode || !targetNode) return null;
+                            return (
+                                <line
+                                    key={i}
+                                    x1={sourceNode.px}
+                                    y1={sourceNode.py}
+                                    x2={targetNode.px}
+                                    y2={targetNode.py}
+                                    stroke="#cbd5e1"
+                                    strokeWidth="2"
+                                    markerEnd="url(#arrowhead)"
+                                />
+                            );
+                        })}
+                    </svg>
 
-                        return (
-                            <line
-                                key={i}
-                                x1={sourceNode.px}
-                                y1={sourceNode.py}
-                                x2={targetNode.px}
-                                y2={targetNode.py}
-                                stroke="#cbd5e1"
-                                strokeWidth="2"
-                                markerEnd="url(#arrowhead)"
-                            />
-                        );
-                    })}
-                </svg>
-
-                {positionedNodes.map((node) => (
-                    <GraphNode key={node.id} node={node} />
-                ))}
+                    {positionedNodes.map((node) => (
+                        <GraphNode key={node.id} node={node} />
+                    ))}
+                </div>
             </div>
         </div>
     );
