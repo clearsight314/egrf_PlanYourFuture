@@ -186,6 +186,7 @@ const RequirementNode = ({
     programName,
     addedElectives,
     pickedChoices,
+    isRodmanScholar,
     onElectiveClick,
     onChoiceClick,
 }) => {
@@ -201,8 +202,14 @@ const RequirementNode = ({
     const isAdditionalCredit = (n) =>
         /additional \d+ credit.*if needed/i.test(n["Requirement Name"] || "");
 
+    // ── Filter Rodman vs non-Rodman Foundations nodes ───────────────────────
+    const isRodmanRelated = (n) => /rodman/i.test(n["Requirement Name"] || "");
+    const isPlainFoundations = (n) => /^Engineering Foundations (I|II)$/i.test(n["Requirement Name"] || "");
+
     // ── Choice detection ("Fulfill any N of" with tree children) ───────────
-    const rawChildren = (node.children || []).filter(c => !isAdditionalCredit(c));
+    const rawChildren = (node.children || [])
+        .filter(c => !isAdditionalCredit(c))
+        .filter(c => isRodmanScholar ? !isPlainFoundations(c) : !isRodmanRelated(c));
     const pickCount = !isElective ? getPickCount(details) : null;
     const isChoice = !isElective && pickCount != null && rawChildren.length > 0;
 
@@ -287,6 +294,7 @@ const RequirementNode = ({
                             programName={programName}
                             addedElectives={addedElectives}
                             pickedChoices={pickedChoices}
+                            isRodmanScholar={isRodmanScholar}
                             onElectiveClick={onElectiveClick}
                             onChoiceClick={onChoiceClick}
                         />
@@ -303,6 +311,7 @@ const DegreeAuditUI = () => {
     const [electiveData, setElectiveData] = useState(null);
     const [selectedMajorName, setSelectedMajorName] = useState("");
     const [showDistinguished, setShowDistinguished] = useState(false);
+    const [isRodmanScholar, setIsRodmanScholar] = useState(false);
     // Elective panel state
     const [selectedElective, setSelectedElective] = useState(null);
     const [addedElectives, setAddedElectives] = useState({});
@@ -329,6 +338,7 @@ const DegreeAuditUI = () => {
                 setAddedElectives({});
                 setSelectedChoice(null);
                 setPickedChoices({});
+                setIsRodmanScholar(false);
             };
             sel.addEventListener("change", handler);
             return () => sel.removeEventListener("change", handler);
@@ -449,11 +459,14 @@ const DegreeAuditUI = () => {
 
     const panelOpen = !!(selectedElective || selectedChoice);
 
+    const isEngineeringGeneral = generalReqs.some((n) => (n["Requirement Name"] || "").includes("Engineering Universal"));
+
     const sharedProps = {
         electiveData,
         programName: programEntry.program_name,
         addedElectives,
         pickedChoices,
+        isRodmanScholar,
         onElectiveClick: handleElectiveClick,
         onChoiceClick: handleChoiceClick,
     };
@@ -477,9 +490,22 @@ const DegreeAuditUI = () => {
 
                 {generalReqs.length > 0 && (
                     <>
-                        <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1e3a8a", marginBottom: "16px" }}>
-                            {getGeneralLabel()}
-                        </h2>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                            <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1e3a8a", margin: 0 }}>
+                                {getGeneralLabel()}
+                            </h2>
+                            {isEngineeringGeneral && (
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={isRodmanScholar}
+                                        onChange={(e) => setIsRodmanScholar(e.target.checked)}
+                                        style={{ cursor: "pointer" }}
+                                    />
+                                    Rodman Scholar
+                                </label>
+                            )}
+                        </div>
                         <div className="flow-tree-container">
                             <div className="flow-tree">
                                 <ul>
