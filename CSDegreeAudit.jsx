@@ -302,6 +302,7 @@ const DegreeAuditUI = () => {
     const [allAuditData, setAllAuditData] = useState(null);
     const [electiveData, setElectiveData] = useState(null);
     const [selectedMajorName, setSelectedMajorName] = useState("");
+    const [showDistinguished, setShowDistinguished] = useState(false);
     // Elective panel state
     const [selectedElective, setSelectedElective] = useState(null);
     const [addedElectives, setAddedElectives] = useState({});
@@ -405,13 +406,21 @@ const DegreeAuditUI = () => {
     const rootNode = tree[0];
     const topLevelCategories = rootNode?.children || [];
 
+    const isDistinguished = (node) =>
+        /distinguished/i.test(node["Requirement Name"] || "");
+
     const isGeneralReq = (node) => {
         const name = node["Requirement Name"] || "";
         return name.includes("Universal Curriculum") || name.includes("General Education");
     };
 
-    const generalReqs = topLevelCategories.filter(isGeneralReq);
-    const majorReqs = topLevelCategories.filter((n) => !isGeneralReq(n));
+    const visibleCategories = showDistinguished
+        ? topLevelCategories
+        : topLevelCategories.filter((n) => !isDistinguished(n));
+
+    const generalReqs = visibleCategories.filter(isGeneralReq);
+    const majorReqs = visibleCategories.filter((n) => !isGeneralReq(n));
+    const hasDistinguished = topLevelCategories.some(isDistinguished);
 
     const getGeneralLabel = () => {
         if (generalReqs.some((n) => (n["Requirement Name"] || "").includes("Engineering Universal"))) return "General Engineering Requirements";
@@ -485,9 +494,22 @@ const DegreeAuditUI = () => {
 
                 {majorReqs.length > 0 && (
                     <>
-                        <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#ea580c", marginTop: generalReqs.length > 0 ? "60px" : "0", marginBottom: "16px" }}>
-                            {programEntry.program_name} Pathways
-                        </h2>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: generalReqs.length > 0 ? "60px" : "0", marginBottom: "16px" }}>
+                            <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#ea580c" }}>
+                                {programEntry.program_name} Pathways
+                            </h2>
+                            {hasDistinguished && (
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={showDistinguished}
+                                        onChange={(e) => setShowDistinguished(e.target.checked)}
+                                        style={{ cursor: "pointer" }}
+                                    />
+                                    Show Distinguished Major
+                                </label>
+                            )}
+                        </div>
                         <div className="flow-tree-container">
                             <div className="flow-tree">
                                 <ul>
