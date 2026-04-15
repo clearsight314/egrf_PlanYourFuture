@@ -143,7 +143,7 @@ body {
 /* --- Tree Flowchart CSS --- */
 .flow-tree-container {
     width: 100%;
-    overflow-x: auto;
+    overflow: hidden;
     padding: 10px;
     background-color: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -299,6 +299,18 @@ body {
     border-color: #d97706 !important;
     background: #fef3c7;
     color: #92400e;
+}
+
+/* Requirements that appear in multiple active programs */
+.node-box.shared-node {
+    border-color: #0ea5e9 !important;
+    background: #f0f9ff;
+    color: #0c4a6e;
+}
+
+.node-box.shared-node:hover {
+    background: #e0f2fe;
+    box-shadow: 0 6px 12px -3px rgba(14, 165, 233, 0.25);
 }
 
 /* The downward pointing arrow head */

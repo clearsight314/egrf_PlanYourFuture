@@ -1,6 +1,9 @@
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef, useLayoutEffect, useMemo } = React;
 
-// Returns the pick-count from "Fulfill any N of the following" constraints, or null
+// ── Constraint parsers ────────────────────────────────────────────────────────
+// Read a requirement's detail constraints and extract how many items must be
+// picked, or how many credits are required, so the UI can enforce limits.
+
 const getPickCount = (details) => {
     if (!details) return null;
     for (const d of details) {
@@ -12,7 +15,6 @@ const getPickCount = (details) => {
     return null;
 };
 
-// Returns the highest required credit count found in constraints, or null
 const getCreditCount = (details) => {
     if (!details) return null;
     let best = null;
@@ -26,7 +28,93 @@ const getCreditCount = (details) => {
     return best;
 };
 
-// Fixed right-edge panel shell shared by both side panels
+// ── Pure helpers ─────────────────────────────────────────────────────────────
+
+// Strip suffix like (BS), (Min), (2mj), etc. to get the base subject name
+const getBaseSubject = (name) => name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+// Resolve a dropdown display name to an audit entry, handling 2mj/2mn suffix variants
+const resolveProgram = (displayName, entries) => {
+    if (!displayName || !entries) return null;
+
+    const direct = entries.find(p => p.program_name === displayName);
+    if (direct) return direct;
+
+    // 2nd major: (BS-2mj) -> (BS), or trailing (2mj) removed
+    const as1st = displayName
+        .replace(/\(([A-Z0-9]+)-2mj\)/i, "($1)")
+        .replace(/\s*\(2mj\)\s*$/i, "")
+        .replace(/\s*\(2mj\s*$/i, "")
+        .trim();
+    const by1st = entries.find(p => p.program_name === as1st);
+    if (by1st) return by1st;
+
+    // Fuzzy: strip suffix parens and match base name
+    const baseName = getBaseSubject(displayName);
+    if (baseName) {
+        const fuzzy = entries.find(p => getBaseSubject(p.program_name) === baseName);
+        if (fuzzy) return fuzzy;
+    }
+
+    // 2nd minor: (2mn) -> (Min) or (mn)
+    for (const suffix of ["(Min)", "(mn)"]) {
+        const asMin = displayName.replace(/\s*\(2mn\)\s*$/i, " " + suffix).trim();
+        const byMin = entries.find(p => p.program_name === asMin);
+        if (byMin) return byMin;
+    }
+
+    return null;
+};
+
+const collectAllNames = (tree) => {
+    const names = new Set();
+    const collect = (nodes) => {
+        for (const node of nodes) {
+            const children = node.children || [];
+            if (children.length === 0) {
+                // Only leaf nodes represent actual courses
+                const name = node["Requirement Name"];
+                if (name) names.add(name);
+            } else {
+                collect(children);
+            }
+        }
+    };
+    collect(tree);
+    return names;
+};
+
+// Returns names appearing in 2+ of the given entries; empty Set if fewer than 2 active
+const computeSharedCourses = (entries) => {
+    const active = entries.filter(Boolean);
+    if (active.length < 2) return new Set();
+    const nameSets = active.map(e => collectAllNames(e.tree));
+    const shared = new Set();
+    nameSets.forEach((set, i) => {
+        set.forEach(name => {
+            if (nameSets.some((other, j) => j !== i && other.has(name))) shared.add(name);
+        });
+    });
+    return shared;
+};
+
+const isGeneralReq = n => {
+    const name = n["Requirement Name"] || "";
+    return name.includes("Universal Curriculum") || name.includes("General Education");
+};
+
+const programHasGeneralReqs = (entry) =>
+    entry ? (entry.tree[0]?.children || []).some(isGeneralReq) : false;
+
+// Measures a container ref and sets zoom to fit width; no-op if already fits
+const fitZoom = (containerRef, setZoom) => {
+    if (!containerRef.current) return;
+    const { scrollWidth, clientWidth } = containerRef.current;
+    if (scrollWidth > clientWidth) setZoom(+(clientWidth / scrollWidth).toFixed(2));
+};
+
+// ── Shared UI components ─────────────────────────────────────────────────────
+
 const PanelShell = ({ accentColor, badge, title, subtitle, onClose, children }) => (
     <div style={{ position: "fixed", top: 0, right: 0, width: "340px", height: "100vh", background: "#fff", boxShadow: "-4px 0 24px rgba(0,0,0,0.15)", zIndex: 1000, display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "system-ui, sans-serif" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", background: "#f8fafc", display: "flex", alignItems: "flex-start", gap: "12px" }}>
@@ -51,7 +139,6 @@ const TableBtn = ({ active, disabled, onToggle, activeLabel, inactiveLabel, acti
     }}>{active ? activeLabel : inactiveLabel}</button>
 );
 
-// Generic table panel — rows: [{ id, label, active, disabled, isInfo, bg }]
 const SidePanel = ({ accentColor, badge, title, subtitle, colHeader, rows, onToggle, activeLabel, inactiveLabel, onClose }) => (
     <PanelShell accentColor={accentColor} badge={badge} title={title} subtitle={subtitle} onClose={onClose}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -75,7 +162,11 @@ const SidePanel = ({ accentColor, badge, title, subtitle, colHeader, rows, onTog
     </PanelShell>
 );
 
-// ── Elective side panel ───────────────────────────────────────────────────────
+// ── Side-panel components ─────────────────────────────────────────────────────
+// ElectivePanel lets the user add/remove specific elective courses for a node.
+// ChoicePanel lets the user pick N options from a "choose one/some" requirement.
+// Both render inside SidePanel, which is built on the PanelShell chrome.
+
 const ElectivePanel = ({ electiveReq, courses, addedCourses, pickCount, creditCount, onToggleCourse, onClose }) => {
     if (!electiveReq) return null;
     const isRange = c => c.startsWith("[range]");
@@ -94,7 +185,6 @@ const ElectivePanel = ({ electiveReq, courses, addedCourses, pickCount, creditCo
     return <SidePanel accentColor="#7c3aed" badge="Elective Options" title={electiveReq.name} subtitle={subtitle} colHeader="Course" rows={rows} onToggle={i => onToggleCourse(courses[+i])} activeLabel="Remove" inactiveLabel="Add" onClose={onClose} />;
 };
 
-// ── Choice panel (Fulfill any N of tree children) ─────────────────────────────
 const ChoicePanel = ({ choiceReq, pickedIds, onToggle, onClose }) => {
     if (!choiceReq) return null;
     const { name, pickCount, children } = choiceReq;
@@ -107,11 +197,35 @@ const ChoicePanel = ({ choiceReq, pickedIds, onToggle, onClose }) => {
     return <SidePanel accentColor="#d97706" badge={pickCount === 1 ? "Choose One" : `Choose ${pickCount}`} title={name} subtitle={`Pick ${pickCount} of ${children.length} — ${pickedIds.length}/${pickCount} selected`} colHeader="Option" rows={rows} onToggle={onToggle} activeLabel="Remove" inactiveLabel="Select" onClose={onClose} />;
 };
 
-// ── Requirement tree node ────────────────────────────────────────────────────
+const SectionDivider = ({ label, color, programName, warning }) => (
+    <div style={{ marginTop: "60px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: warning ? "10px" : "0" }}>
+            <div style={{ flex: 1, height: "2px", background: `${color}33` }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.1em", whiteSpace: "nowrap" }}>{label}</span>
+            <div style={{ flex: 1, height: "2px", background: `${color}33` }} />
+        </div>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold", color, margin: "8px 0 0" }}>{programName}</h2>
+        {warning && (
+            <div style={{ marginTop: "10px", padding: "10px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: "8px", fontSize: "13px", color: "#92400e", display: "flex", gap: "8px", alignItems: "center" }}>
+                <span style={{ fontSize: "16px" }}>⚠️</span>
+                <span>{warning}</span>
+            </div>
+        )}
+    </div>
+);
+
+// ── Requirement tree node ─────────────────────────────────────────────────────
+// Recursively renders one node in the degree-requirement tree.
+// Handles three node types:
+//   • Elective  — click opens ElectivePanel; added courses appear as children
+//   • Choice    — click opens ChoicePanel; chosen sub-requirements are shown
+//   • Standard  — always-required course or group, rendered as-is
+// Nodes shared across multiple programs are highlighted in teal.
+
 const RequirementNode = ({
     node, isRoot = false, color = "#1e293b",
     electiveData, programName, addedElectives, pickedChoices, isRodmanScholar,
-    onElectiveClick, onChoiceClick,
+    onElectiveClick, onChoiceClick, sharedCourses,
 }) => {
     const reqName = node["Requirement Name"] || node["Requirement ID"] || "Unnamed Requirement";
     const nodeId = node["Requirement ID"];
@@ -155,17 +269,19 @@ const RequirementNode = ({
     };
 
     const isClickable = isElective || isChoice;
-    const nodeClass = ["node-box", isElective && "elective-node", isChoice && "choice-node", node._isAddedElective && "added-elective-node"].filter(Boolean).join(" ");
-    const nodeColor = node._isAddedElective ? "#7c3aed" : color;
+    const isShared = !!(sharedCourses && sharedCourses.has(reqName));
+    const nodeClass = ["node-box", isElective && "elective-node", isChoice && "choice-node", node._isAddedElective && "added-elective-node", isShared && "shared-node"].filter(Boolean).join(" ");
+    const nodeColor = node._isAddedElective ? "#7c3aed" : isShared ? "#0ea5e9" : color;
 
     return (
         <li>
             <div className={nodeClass} style={{ borderColor: nodeColor, cursor: isClickable ? "pointer" : "default" }} onClick={handleClick}
-                title={isElective ? `Click to pick ${reqName} electives` : isChoice ? `Click to choose ${reqName}` : undefined}>
+                title={isElective ? `Click to pick ${reqName} electives` : isChoice ? `Click to choose ${reqName}` : isShared ? "Counts toward multiple programs" : undefined}>
                 {!isRoot && <div className="arrow-down" />}
                 {reqName}
                 {isElective && <span style={{ display: "block", fontSize: "6px", color: "#7c3aed", marginTop: "1px" }}>▼ elective</span>}
                 {isChoice && <span style={{ display: "block", fontSize: "6px", color: "#d97706", marginTop: "1px" }}>▼ pick {pickCount}</span>}
+                {isShared && !isElective && !isChoice && <span style={{ display: "block", fontSize: "6px", color: "#0ea5e9", marginTop: "1px" }}>↔ shared</span>}
             </div>
             {displayChildren.length > 0 && (
                 <ul>
@@ -175,7 +291,8 @@ const RequirementNode = ({
                             electiveData={electiveData} programName={programName}
                             addedElectives={addedElectives} pickedChoices={pickedChoices}
                             isRodmanScholar={isRodmanScholar}
-                            onElectiveClick={onElectiveClick} onChoiceClick={onChoiceClick} />
+                            onElectiveClick={onElectiveClick} onChoiceClick={onChoiceClick}
+                            sharedCourses={sharedCourses} />
                     ))}
                 </ul>
             )}
@@ -184,102 +301,209 @@ const RequirementNode = ({
 };
 
 // ── Main UI ──────────────────────────────────────────────────────────────────
+// Top-level component for the degree audit visualizer.
+// Loads audit JSON and elective JSON on mount, then listens for dropdown
+// changes (major, 2nd major, minor, 2nd minor) from the host page.
+// Computes which requirements are shared across programs and renders each
+// program's tree in its own zoomable section.
+
 const DegreeAuditUI = () => {
+    // ── State ─────────────────────────────────────────────────────────────────
+    // allAuditData: full JSON keyed by program ID
+    // electiveData: maps elective node keys to lists of eligible courses
     const [allAuditData, setAllAuditData] = useState(null);
     const [electiveData, setElectiveData] = useState(null);
-    const [selectedMajorName, setSelectedMajorName] = useState("");
-    const [showDistinguished, setShowDistinguished] = useState(false);
-    const [isRodmanScholar, setIsRodmanScholar] = useState(false);
-    const [selectedElective, setSelectedElective] = useState(null);
-    const [addedElectives, setAddedElectives] = useState({});
-    const [selectedChoice, setSelectedChoice] = useState(null);
-    const [pickedChoices, setPickedChoices] = useState({});
 
+    const [selectedMajorName,  setSelectedMajorName]  = useState("");
+    const [selectedMajor2Name, setSelectedMajor2Name] = useState("");
+    const [selectedMinorName,  setSelectedMinorName]  = useState("");
+    const [selectedMinor2Name, setSelectedMinor2Name] = useState("");
+
+    // ── UI toggles ────────────────────────────────────────────────────────────
+    const [showDistinguished, setShowDistinguished] = useState(false);
+    const [isRodmanScholar,   setIsRodmanScholar]   = useState(false);
+
+    // ── Panel open/close state ────────────────────────────────────────────────
+    const [selectedElective, setSelectedElective] = useState(null);
+    const [selectedChoice,   setSelectedChoice]   = useState(null);
+
+    // ── User selections: electives added and choices made per program slot ────
+    const [addedElectivesMap, setAddedElectivesMap] = useState({ major1: {}, major2: {}, minor: {}, minor2: {} });
+    const [pickedChoicesMap,  setPickedChoicesMap]  = useState({ major1: {}, major2: {}, minor: {}, minor2: {} });
+
+    // ── Per-section zoom levels ───────────────────────────────────────────────
+    const [generalZoom, setGeneralZoom] = useState(1);
+    const [majorZoom,   setMajorZoom]   = useState(1);
+    const [major2Zoom,  setMajor2Zoom]  = useState(1);
+    const [minorZoom,   setMinorZoom]   = useState(1);
+    const [minor2Zoom,  setMinor2Zoom]  = useState(1);
+
+    // ── Refs for auto-fit zoom on initial render ───────────────────────────────
+    const generalContainerRef = useRef(null);
+    const majorContainerRef   = useRef(null);
+    const major2ContainerRef  = useRef(null);
+    const minorContainerRef   = useRef(null);
+    const minor2ContainerRef  = useRef(null);
+
+    // Fit zoom independently for major and minor containers to avoid unnecessary remeasurement
+    useLayoutEffect(() => {
+        fitZoom(generalContainerRef, setGeneralZoom);
+        fitZoom(majorContainerRef,   setMajorZoom);
+        fitZoom(major2ContainerRef,  setMajor2Zoom);
+    }, [selectedMajorName, selectedMajor2Name]);
+
+    useLayoutEffect(() => {
+        fitZoom(minorContainerRef,  setMinorZoom);
+        fitZoom(minor2ContainerRef, setMinor2Zoom);
+    }, [selectedMinorName, selectedMinor2Name]);
+
+    // ── Data fetch + dropdown listeners ──────────────────────────────────────
+    // Fetches audit and elective JSON once on mount.
+    // Attaches change listeners to the host page's <select> elements so React
+    // state stays in sync when the user picks a program outside this component.
     useEffect(() => {
         fetch("./all_majors_audit.json").then(r => r.json()).then(setAllAuditData).catch(console.error);
         fetch("./elective_classes.json").then(r => r.json()).then(setElectiveData).catch(console.error);
 
-        const sel = document.getElementById("sel-major");
-        if (sel) {
-            const handler = () => {
-                setSelectedMajorName(sel.value);
-                setSelectedElective(null);
-                setAddedElectives({});
-                setSelectedChoice(null);
-                setPickedChoices({});
-                setIsRodmanScholar(false);
-            };
+        const addListener = (selectId, handler) => {
+            const sel = document.getElementById(selectId);
+            if (!sel) return null;
             sel.addEventListener("change", handler);
             return () => sel.removeEventListener("change", handler);
-        }
+        };
+
+        const cleanups = [
+            addListener("sel-major", e => {
+                setSelectedMajorName(e.target.value);
+                setSelectedElective(null); setSelectedChoice(null);
+                setIsRodmanScholar(false); setGeneralZoom(1); setMajorZoom(1);
+                setAddedElectivesMap(p => ({ ...p, major1: {} }));
+                setPickedChoicesMap(p => ({ ...p, major1: {} }));
+            }),
+            addListener("sel-major2", e => {
+                setSelectedMajor2Name(e.target.value);
+                setSelectedElective(null); setSelectedChoice(null);
+                setMajor2Zoom(1);
+                setAddedElectivesMap(p => ({ ...p, major2: {} }));
+                setPickedChoicesMap(p => ({ ...p, major2: {} }));
+            }),
+            addListener("sel-minor", e => {
+                setSelectedMinorName(e.target.value);
+                setSelectedElective(null); setSelectedChoice(null);
+                setMinorZoom(1);
+                setAddedElectivesMap(p => ({ ...p, minor: {} }));
+                setPickedChoicesMap(p => ({ ...p, minor: {} }));
+            }),
+            addListener("sel-minor2", e => {
+                setSelectedMinor2Name(e.target.value);
+                setSelectedElective(null); setSelectedChoice(null);
+                setMinor2Zoom(1);
+                setAddedElectivesMap(p => ({ ...p, minor2: {} }));
+                setPickedChoicesMap(p => ({ ...p, minor2: {} }));
+            }),
+        ].filter(Boolean);
+
+        return () => cleanups.forEach(fn => fn());
     }, []);
+
+    // ── Panel interaction handlers ────────────────────────────────────────────
+    // Open/close the elective or choice panel; toggling the same node closes it.
 
     const handleElectiveClick = (elective) => {
         setSelectedChoice(null);
-        setSelectedElective(prev => prev?.id === elective.id ? null : elective);
+        setSelectedElective(prev =>
+            prev?.id === elective.id && prev?.programSlot === elective.programSlot ? null : elective
+        );
     };
 
-    // Single toggle handler for adding/removing an elective course
     const handleElectiveCourseToggle = (course) => {
         if (!selectedElective) return;
-        setAddedElectives(prev => {
-            const existing = prev[selectedElective.id] || [];
+        const { id, programSlot } = selectedElective;
+        setAddedElectivesMap(prev => {
+            const slotMap = prev[programSlot] || {};
+            const existing = slotMap[id] || [];
             return {
                 ...prev,
-                [selectedElective.id]: existing.includes(course)
-                    ? existing.filter(c => c !== course)
-                    : [...existing, course],
+                [programSlot]: {
+                    ...slotMap,
+                    [id]: existing.includes(course) ? existing.filter(c => c !== course) : [...existing, course],
+                },
             };
         });
     };
 
     const handleChoiceClick = (choice) => {
         setSelectedElective(null);
-        setSelectedChoice(prev => prev?.id === choice.id ? null : choice);
+        setSelectedChoice(prev =>
+            prev?.id === choice.id && prev?.programSlot === choice.programSlot ? null : choice
+        );
     };
 
     const handleChoiceToggle = (childId) => {
         if (!selectedChoice) return;
-        const { id: parentId, pickCount } = selectedChoice;
-        setPickedChoices(prev => {
-            const existing = prev[parentId] || [];
-            if (existing.includes(childId)) return { ...prev, [parentId]: existing.filter(x => x !== childId) };
-            if (pickCount === 1) return { ...prev, [parentId]: [childId] };
+        const { id: parentId, pickCount, programSlot } = selectedChoice;
+        setPickedChoicesMap(prev => {
+            const slotMap = prev[programSlot] || {};
+            const existing = slotMap[parentId] || [];
+            if (existing.includes(childId)) return { ...prev, [programSlot]: { ...slotMap, [parentId]: existing.filter(x => x !== childId) } };
+            if (pickCount === 1) return { ...prev, [programSlot]: { ...slotMap, [parentId]: [childId] } };
             if (existing.length >= pickCount) return prev;
-            return { ...prev, [parentId]: [...existing, childId] };
+            return { ...prev, [programSlot]: { ...slotMap, [parentId]: [...existing, childId] } };
         });
     };
 
     const closePanel = () => { setSelectedElective(null); setSelectedChoice(null); };
 
+    // ── Derived data (memos) ──────────────────────────────────────────────────
+    // Resolve each selected program name to its audit entry; compute the set of
+    // course names that appear in more than one active program for shared highlighting.
+    // All hooks must run before any early returns (Rules of Hooks)
+    const auditEntries = useMemo(() => allAuditData ? Object.values(allAuditData) : [], [allAuditData]);
+    const programEntry = useMemo(() => auditEntries.find(p => p.program_name === selectedMajorName) || null, [auditEntries, selectedMajorName]);
+    const major2Entry  = useMemo(() => resolveProgram(selectedMajor2Name, auditEntries), [selectedMajor2Name, auditEntries]);
+    const minorEntry   = useMemo(() => resolveProgram(selectedMinorName,  auditEntries), [selectedMinorName,  auditEntries]);
+    const minor2Entry  = useMemo(() => resolveProgram(selectedMinor2Name, auditEntries), [selectedMinor2Name, auditEntries]);
+
+    const sharedCourses = useMemo(
+        () => computeSharedCourses([programEntry, major2Entry, minorEntry, minor2Entry]),
+        [programEntry, major2Entry, minorEntry, minor2Entry]
+    );
+
     if (!allAuditData) return <div style={{ padding: "20px", color: "#64748b" }}>Loading audit data...</div>;
     if (!selectedMajorName) return <div style={{ padding: "20px", color: "#64748b" }}>Select a major to view its requirements.</div>;
-
-    const programEntry = Object.values(allAuditData).find(p => p.program_name === selectedMajorName);
     if (!programEntry) return <div style={{ padding: "20px", color: "#64748b" }}>No audit data found for {selectedMajorName}.</div>;
+
+    // ── Tree slicing ──────────────────────────────────────────────────────────
+    // Split the primary major's top-level categories into general-education reqs
+    // (Universal Curriculum / General Education blocks) and major-specific reqs.
+    // "Distinguished Major" nodes are hidden unless the toggle is on.
 
     const tree = programEntry.tree;
     const topLevelCategories = tree[0]?.children || [];
-
     const isDistinguished = n => /distinguished/i.test(n["Requirement Name"] || "");
-    const isGeneralReq = n => {
-        const name = n["Requirement Name"] || "";
-        return name.includes("Universal Curriculum") || name.includes("General Education");
-    };
-
     const visibleCategories = showDistinguished ? topLevelCategories : topLevelCategories.filter(n => !isDistinguished(n));
     const generalReqs = visibleCategories.filter(isGeneralReq);
-    const majorReqs = visibleCategories.filter(n => !isGeneralReq(n));
+    const majorReqs   = visibleCategories.filter(n => !isGeneralReq(n));
     const hasDistinguished = topLevelCategories.some(isDistinguished);
 
-    const getGeneralLabel = () => {
+    const getGeneralLabel = (reqs) => {
         const nm = n => n["Requirement Name"] || "";
-        if (generalReqs.some(n => nm(n).includes("Engineering Universal"))) return "General Engineering Requirements";
-        if (generalReqs.some(n => nm(n).includes("Architecture Universal"))) return "General Architecture Requirements";
+        if (reqs.some(n => nm(n).includes("Engineering Universal"))) return "General Engineering Requirements";
+        if (reqs.some(n => nm(n).includes("Architecture Universal"))) return "General Architecture Requirements";
         return "General Education Requirements";
     };
 
-    // Recursively find a node by Requirement ID to read its constraints
+    // Skip major2's general reqs if major1 already shows the same school-wide block
+    const major2ShouldSkipGeneral = generalReqs.length > 0 && major2Entry && programHasGeneralReqs(major2Entry);
+
+    // ── Conflict detection ────────────────────────────────────────────────────
+    // A minor conflicts with an active major when the base subject name matches
+    // (e.g. "Computer Science (Min)" conflicts with "Computer Science (BS)").
+
+    const activeMajorBases = [programEntry, major2Entry].filter(Boolean).map(e => getBaseSubject(e.program_name));
+    const minorConflict  = minorEntry  ? activeMajorBases.includes(getBaseSubject(minorEntry.program_name))  : false;
+    const minor2Conflict = minor2Entry ? activeMajorBases.includes(getBaseSubject(minor2Entry.program_name)) : false;
+
     const findNode = (nodes, id) => {
         for (const n of nodes) {
             if (n["Requirement ID"] === id) return n;
@@ -289,32 +513,90 @@ const DegreeAuditUI = () => {
         return null;
     };
 
-    const electiveNode = selectedElective ? findNode(tree, selectedElective.id) : null;
+    // ── Panel data resolution ─────────────────────────────────────────────────
+    // Locate the elective/choice node inside the correct program's tree so we
+    // can read its constraint details (pick count, credit count) for the panel.
+
+    const treesMap = { major1: tree, major2: major2Entry?.tree, minor: minorEntry?.tree, minor2: minor2Entry?.tree };
+    const activeTree = selectedElective ? treesMap[selectedElective.programSlot] : null;
+
+    const electiveNode    = selectedElective && activeTree ? findNode(activeTree, selectedElective.id) : null;
     const selectedCourses = selectedElective ? (electiveData?.[selectedElective.key] || []) : [];
-    const addedForSelected = selectedElective ? (addedElectives[selectedElective.id] || []) : [];
-    const pickedForChoice = selectedChoice ? (pickedChoices[selectedChoice.id] || []) : [];
+    const addedForSelected = selectedElective ? ((addedElectivesMap[selectedElective.programSlot] || {})[selectedElective.id] || []) : [];
+    const pickedForChoice  = selectedChoice   ? ((pickedChoicesMap[selectedChoice.programSlot]    || {})[selectedChoice.id]   || []) : [];
     const panelOpen = !!(selectedElective || selectedChoice);
+
     const isEngineeringGeneral = generalReqs.some(n => (n["Requirement Name"] || "").includes("Engineering Universal"));
 
-    const sharedProps = {
-        electiveData, programName: programEntry.program_name,
-        addedElectives, pickedChoices, isRodmanScholar,
-        onElectiveClick: handleElectiveClick, onChoiceClick: handleChoiceClick,
+    const zoomBtnStyle = {
+        width: "22px", height: "22px", borderRadius: "4px",
+        border: "1px solid #cbd5e1", background: "#fff", color: "#475569",
+        cursor: "pointer", fontSize: "15px", fontWeight: "bold",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        lineHeight: 1, padding: 0, boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
     };
 
-    const renderTree = (nodes, color) => (
-        <div className="flow-tree-container">
-            <div className="flow-tree">
-                <ul>{nodes.map(n => <RequirementNode key={n["Requirement ID"]} node={n} isRoot color={color} {...sharedProps} />)}</ul>
+    // ── Slot prop factory ─────────────────────────────────────────────────────
+    // Builds the prop bundle passed to every RequirementNode for a given program
+    // slot (major1, major2, minor, minor2), wiring elective/choice callbacks and
+    // the per-slot state maps.
+
+    const makeSharedProps = (slot, entry) => ({
+        electiveData,
+        programName: entry.program_name,
+        addedElectives: addedElectivesMap[slot] || {},
+        pickedChoices:  pickedChoicesMap[slot]  || {},
+        isRodmanScholar: slot === "major1" ? isRodmanScholar : false,
+        onElectiveClick: (elective) => handleElectiveClick({ ...elective, programSlot: slot }),
+        onChoiceClick:   (choice)   => handleChoiceClick({ ...choice, programSlot: slot }),
+        sharedCourses,
+    });
+
+    // ── Tree renderer ─────────────────────────────────────────────────────────
+    // Wraps the requirement tree in a zoomable container with +/− buttons.
+    // The zoom is applied via CSS transform so the layout engine sees the
+    // unscaled size and horizontal scroll triggers auto-fit on next render.
+
+    const renderTree = (nodes, color, zoom, setZoom, containerRef, slotProps) => (
+        <div className="flow-tree-container" style={{ position: "relative" }} ref={containerRef}>
+            <div style={{ position: "absolute", top: "6px", left: "6px", zIndex: 20, display: "flex", gap: "3px" }}>
+                <button onClick={() => setZoom(z => Math.max(0.3, +(z - 0.1).toFixed(1)))} style={zoomBtnStyle} title="Zoom out">−</button>
+                <button onClick={() => setZoom(z => Math.min(2.5, +(z + 0.1).toFixed(1)))} style={zoomBtnStyle} title="Zoom in">+</button>
+            </div>
+            <div style={{ transform: `scale(${zoom})`, transformOrigin: "top center", transition: "transform 0.2s ease" }}>
+                <div className="flow-tree">
+                    <ul>{nodes.map(n => <RequirementNode key={n["Requirement ID"]} node={n} isRoot color={color} {...slotProps} />)}</ul>
+                </div>
             </div>
         </div>
     );
 
-    const checkLabel = (checked, onChange, label) => (
-        <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#64748b", cursor: "pointer", userSelect: "none" }}>
-            <input type="checkbox" checked={checked} onChange={onChange} style={{ cursor: "pointer" }} />{label}
-        </label>
-    );
+    // ── Minor section renderer ────────────────────────────────────────────────
+    // Shows a divider, the program name, an optional conflict warning, and the
+    // tree for a minor/2nd-minor slot. Hides the tree entirely on conflict.
+
+    const renderMinorSection = (entry, slot, label, color, conflict, zoom, setZoom, containerRef) => {
+        if (!entry) return null;
+        const cats = entry.tree[0]?.children || [];
+        const props = makeSharedProps(slot, entry);
+        const warning = conflict
+            ? `A minor in ${entry.program_name} cannot be taken alongside your current major(s) — it corresponds to the same field.`
+            : null;
+        return (
+            <>
+                <SectionDivider label={label} color={color} programName={entry.program_name} warning={warning} />
+                {!conflict && cats.length > 0 && renderTree(cats, color, zoom, setZoom, containerRef, props)}
+            </>
+        );
+    };
+
+    const major1Props = makeSharedProps("major1", programEntry);
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    // Layout order: page title → general-ed reqs → major pathways →
+    // 2nd major (with optional general-ed) → minor → 2nd minor →
+    // shared-courses legend. Side panel (elective or choice) overlays the right
+    // edge and shifts the main content left via marginRight transition.
 
     return (
         <>
@@ -326,10 +608,14 @@ const DegreeAuditUI = () => {
                 {generalReqs.length > 0 && (
                     <>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                            <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1e3a8a", margin: 0 }}>{getGeneralLabel()}</h2>
-                            {isEngineeringGeneral && checkLabel(isRodmanScholar, e => setIsRodmanScholar(e.target.checked), "Rodman Scholar")}
+                            <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1e3a8a", margin: 0 }}>{getGeneralLabel(generalReqs)}</h2>
+                            {isEngineeringGeneral && (
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                                    <input type="checkbox" checked={isRodmanScholar} onChange={e => setIsRodmanScholar(e.target.checked)} style={{ cursor: "pointer" }} />Rodman Scholar
+                                </label>
+                            )}
                         </div>
-                        {renderTree(generalReqs, "#1e3a8a")}
+                        {renderTree(generalReqs, "#1e3a8a", generalZoom, setGeneralZoom, generalContainerRef, major1Props)}
                     </>
                 )}
 
@@ -337,10 +623,60 @@ const DegreeAuditUI = () => {
                     <>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: generalReqs.length > 0 ? "60px" : "0", marginBottom: "16px" }}>
                             <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#ea580c" }}>{programEntry.program_name} Pathways</h2>
-                            {hasDistinguished && checkLabel(showDistinguished, e => setShowDistinguished(e.target.checked), "Show Distinguished Major")}
+                            {hasDistinguished && (
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "#64748b", cursor: "pointer", userSelect: "none" }}>
+                                    <input type="checkbox" checked={showDistinguished} onChange={e => setShowDistinguished(e.target.checked)} style={{ cursor: "pointer" }} />Show Distinguished Major
+                                </label>
+                            )}
                         </div>
-                        {renderTree(majorReqs, "#ea580c")}
+                        {renderTree(majorReqs, "#ea580c", majorZoom, setMajorZoom, majorContainerRef, major1Props)}
                     </>
+                )}
+
+                {major2Entry && (() => {
+                    const m2Cats   = major2Entry.tree[0]?.children || [];
+                    const m2General = m2Cats.filter(isGeneralReq);
+                    const m2Major   = m2Cats.filter(n => !isGeneralReq(n));
+                    const m2Props   = makeSharedProps("major2", major2Entry);
+                    return (
+                        <>
+                            <SectionDivider label="2nd Major" color="#0d9488" programName={major2Entry.program_name} />
+
+                            {!major2ShouldSkipGeneral && m2General.length > 0 && (
+                                <>
+                                    <div style={{ marginBottom: "16px" }}>
+                                        <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#1e3a8a", margin: 0 }}>{getGeneralLabel(m2General)}</h2>
+                                    </div>
+                                    {renderTree(m2General, "#1e3a8a", major2Zoom, setMajor2Zoom, major2ContainerRef, m2Props)}
+                                </>
+                            )}
+
+                            {major2ShouldSkipGeneral && (
+                                <div style={{ marginBottom: "16px", padding: "8px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "8px", fontSize: "12px", color: "#166534" }}>
+                                    General school requirements are shared with your 1st major and shown above.
+                                </div>
+                            )}
+
+                            {m2Major.length > 0 && (
+                                <>
+                                    <div style={{ marginTop: m2General.length > 0 && !major2ShouldSkipGeneral ? "40px" : "0", marginBottom: "16px" }}>
+                                        <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#0d9488" }}>{major2Entry.program_name} Pathways</h2>
+                                    </div>
+                                    {renderTree(m2Major, "#0d9488", major2Zoom, setMajor2Zoom, major2ContainerRef, m2Props)}
+                                </>
+                            )}
+                        </>
+                    );
+                })()}
+
+                {renderMinorSection(minorEntry,  "minor",  "Minor",    "#7c3aed", minorConflict,  minorZoom,  setMinorZoom,  minorContainerRef)}
+                {renderMinorSection(minor2Entry, "minor2", "2nd Minor", "#db2777", minor2Conflict, minor2Zoom, setMinor2Zoom, minor2ContainerRef)}
+
+                {sharedCourses.size > 0 && (
+                    <div style={{ marginTop: "40px", padding: "12px 16px", background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px", fontSize: "13px", color: "#0c4a6e", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                        <span style={{ fontSize: "16px", marginTop: "1px" }}>↔</span>
+                        <span><strong>Shared requirements</strong> — boxes outlined in teal with an "↔ shared" label count toward more than one of your selected programs. You only need to satisfy them once.</span>
+                    </div>
                 )}
             </div>
 

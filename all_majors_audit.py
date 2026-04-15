@@ -93,7 +93,7 @@ def parse_constraint(constraint_text):
 
 
 def main():
-    df = pd.read_csv("audit_requirements_undergrad.csv")
+    df = pd.read_csv("audit_requirements-2026.csv")
     drop_cols = [c for c in ["Audit ID", "Audit Name", "Audit Start Entry Year", "Audit End Entry Year"] if c in df.columns]
     df = df.drop(columns=drop_cols)
 
