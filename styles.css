@@ -159,7 +159,7 @@ body {
 }
 
 .flow-tree ul {
-    padding-top: 12px; /* Tighter vertical spacing */
+    padding-top: 12px;
     position: relative;
     display: flex;
     justify-content: center;
@@ -170,33 +170,29 @@ body {
 .flow-tree li {
     list-style-type: none;
     position: relative;
-    /* Extremely tight horizontal branches (1px gap) */
     padding: 12px 1px 0 1px;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-/* Draw the horizontal connector lines */
 .flow-tree li::before,
 .flow-tree li::after {
     content: "";
     position: absolute;
     top: 0;
     right: 50%;
-    border-top: 1px solid #94a3b8; /* Thinner lines */
+    border-top: 1px solid #94a3b8;
     width: 50%;
     height: 12px;
 }
 
-/* Draw the vertical lines dropping down to the children */
 .flow-tree li::after {
     right: auto;
     left: 50%;
     border-left: 1px solid #94a3b8;
 }
 
-/* Clean up lines for single children */
 .flow-tree li:only-child::after,
 .flow-tree li:only-child::before {
     display: none;
@@ -205,7 +201,6 @@ body {
     padding-top: 0;
 }
 
-/* Clean up lines for the edges of the branches */
 .flow-tree li:first-child::before,
 .flow-tree li:last-child::after {
     border: 0 none;
@@ -218,7 +213,6 @@ body {
     border-radius: 3px 0 0 0;
 }
 
-/* Vertical line coming down from the parent node */
 .flow-tree ul ul::before {
     content: "";
     position: absolute;
@@ -230,16 +224,14 @@ body {
     transform: translateX(-50%);
 }
 
-/* The actual visual box for the course/requirement */
 .node-box {
-    border: 1px solid #1e293b; /* Thinner borders */
+    border: 1px solid #1e293b;
     background-color: #ffffff;
-    border-radius: 4px; /* Less rounding to save space */
-    padding: 4px 2px; /* Extremely tight padding */
+    border-radius: 4px;
+    padding: 4px 2px;
     text-align: center;
-    /* Maximum compactness */
-    min-width: 45px;
-    max-width: 75px;
+    min-width: 60px;
+    max-width: 95px;
     position: relative;
     z-index: 10;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
@@ -247,9 +239,9 @@ body {
     font-family: system-ui, sans-serif;
     color: #0f172a;
     font-weight: 600;
-    font-size: 8px; /* Tiny text to prevent wrap expansions */
+    font-size: 11px;
     line-height: 1.1;
-    letter-spacing: -0.2px; /* Squeeze letters slightly */
+    letter-spacing: -0.2px;
     transition: all 0.2s ease;
 }
 
@@ -325,4 +317,83 @@ body {
     border-right: 3px solid transparent;
     border-top: 4px solid #94a3b8;
     z-index: 11;
+}
+
+/* --- Course Graph DAG CSS --- */
+.graph-wrapper {
+    font-family: system-ui, sans-serif;
+    padding: 40px;
+    background-color: #f8fafc;
+}
+
+.graph-header {
+    font-size: 28px;
+    font-weight: bold;
+    color: #0f172a;
+    margin-bottom: 20px;
+}
+
+.graph-error-notice {
+    padding: 20px;
+    color: #b91c1c;
+    background-color: #fef2f2;
+    border: 1px solid #f87171;
+    border-radius: 8px;
+}
+
+.graph-canvas-container {
+    position: relative;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    overflow-x: auto;
+}
+
+.graph-svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.graph-node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border: 2px solid #ea580c;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-weight: bold;
+    color: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    z-index: 10;
+    min-width: 55px;
+    font-size: 10px;
+    text-align: center;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.graph-node:hover {
+    box-shadow: 0 6px 10px -3px rgba(0, 0, 0, 0.1);
+    transform: translate(-50%, calc(-50% - 2px));
+    z-index: 20;
+}
+
+.graph-node.taken {
+    border-color: #16a34a;
+    background-color: #dcfce7;
+    color: #14532d;
+}
+
+.graph-node .checkmark {
+    margin-right: 4px;
+    font-weight: bold;
 }
