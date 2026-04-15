@@ -1,3 +1,4 @@
+(() => {
 const { useState, useEffect } = React;
 
 const GraphNode = ({ node, isTaken, isDisabled, isGrayedOut, onClick }) => {
@@ -474,3 +475,4 @@ const FullRequirementTree = () => {
 };
 
 window.FullRequirementTree = FullRequirementTree;
+})();

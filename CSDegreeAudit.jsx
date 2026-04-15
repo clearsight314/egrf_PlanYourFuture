@@ -1,3 +1,4 @@
+(() => {
 const { useState, useEffect } = React;
 
 const RequirementNode = ({ node, isRoot = false, color = "#1e293b" }) => {
@@ -196,3 +197,4 @@ const DegreeAuditUI = () => {
 };
 
 window.DegreeAuditUI = DegreeAuditUI;
+})();

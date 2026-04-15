@@ -1,3 +1,4 @@
+(() => {
 const { useState, useEffect, useRef, useLayoutEffect, useMemo } = React;
 
 // ── Constraint parsers ────────────────────────────────────────────────────────
@@ -700,3 +701,5 @@ const DegreeAuditUI = () => {
 };
 
 window.DegreeAuditUI = DegreeAuditUI;
+window.otherDegreeAuditUI = DegreeAuditUI;
+})();

@@ -1,3 +1,4 @@
+(() => {
 const { useState, useEffect } = React;
 
 const GraphNode = ({ node }) => {
@@ -152,3 +153,4 @@ const CourseGraph = () => {
 };
 
 window.CourseGraph = CourseGraph;
+})();
