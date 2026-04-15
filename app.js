@@ -1,4 +1,9 @@
 //
+function updateSummary() {
+    // Intentionally empty — the React App component listens to dropdown
+    // change events directly and re-renders based on the selected major.
+}
+
 function populate(selectId, items, placeholder) {
     const sel = document.getElementById(selectId);
     sel.innerHTML = `<option value="">${placeholder}</option>`;
