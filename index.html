@@ -49,14 +49,47 @@
             <script type="text/babel" src="CSDegreeAudit.jsx"></script>
             <script type="text/babel" src="GraphNode.jsx"></script>
             <script type="text/babel" src="FullRequirementTree.jsx"></script>
+            <script type="text/babel" src="otherMajors.jsx"></script>
 
             <script type="text/babel">
+                const { useState, useEffect } = React;
+
+                const App = () => {
+                    const [selectedMajor, setSelectedMajor] = useState("");
+
+                    useEffect(() => {
+                        const sel = document.getElementById("sel-major");
+                        if (!sel) return;
+
+                        const handleChange = () => setSelectedMajor(sel.value);
+
+                        // Read initial value in case it's already set
+                        setSelectedMajor(sel.value);
+                        sel.addEventListener("change", handleChange);
+                        return () => sel.removeEventListener("change", handleChange);
+                    }, []);
+
+                    const isCS = selectedMajor.toLowerCase().includes("computer science");
+
+                    if (!selectedMajor) {
+                        return (
+                            <div style={{ padding: "40px", color: "#64748b", fontFamily: "system-ui, sans-serif", fontSize: "16px" }}>
+                                Select a major from the dropdown to see degree requirements.
+                            </div>
+                        );
+                    }
+
+                    if (isCS) {
+                        return <window.FullRequirementTree />;
+                    }
+
+                    return <window.otherDegreeAuditUI major={selectedMajor} />;
+                };
+
                 const root = ReactDOM.createRoot(
                     document.getElementById("root"),
                 );
-                // root.render(<window.DegreeAuditUI />);
-                // root.render(<window.CourseGraph />);
-                root.render(<window.FullRequirementTree />);
+                root.render(<App />);
             </script>
             <!-- <div id="placeholder">
                 <h2>Plan Your Future Stellic Supplement</h2>
