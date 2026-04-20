@@ -369,6 +369,7 @@ const DegreeAuditUI = () => {
         const addListener = (selectId, handler) => {
             const sel = document.getElementById(selectId);
             if (!sel) return null;
+            if (sel.value) handler({ target: sel });
             sel.addEventListener("change", handler);
             return () => sel.removeEventListener("change", handler);
         };
