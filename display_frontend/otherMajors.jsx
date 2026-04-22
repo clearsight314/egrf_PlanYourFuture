@@ -363,8 +363,8 @@ const DegreeAuditUI = () => {
     // Attaches change listeners to the host page's <select> elements so React
     // state stays in sync when the user picks a program outside this component.
     useEffect(() => {
-        fetch("./all_majors_audit.json").then(r => r.json()).then(setAllAuditData).catch(console.error);
-        fetch("./elective_classes.json").then(r => r.json()).then(setElectiveData).catch(console.error);
+        fetch("./json_files/all_majors_audit.json").then(r => r.json()).then(setAllAuditData).catch(console.error);
+        fetch("./json_files/elective_classes.json").then(r => r.json()).then(setElectiveData).catch(console.error);
 
         const addListener = (selectId, handler) => {
             const sel = document.getElementById(selectId);

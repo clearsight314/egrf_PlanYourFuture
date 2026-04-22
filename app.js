@@ -17,7 +17,7 @@ function populate(selectId, items, placeholder) {
 }
 
 async function loadData() {
-    const response = await fetch("majors_data.json");
+    const response = await fetch("./json_files/majors_data.json");
     const data = await response.json();
 
     populate("sel-major", data.majors, "— Select Major —");
@@ -26,7 +26,6 @@ async function loadData() {
     populate("sel-minor2", data.minors2, "N/A");
 
     document.getElementById("loading").style.display = "none";
-    document.getElementById("placeholder").style.display = "block";
 }
 
 loadData().catch((err) => {
