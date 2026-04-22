@@ -78,7 +78,7 @@ const DegreeAuditUI = () => {
     const [auditData, setAuditData] = useState([]);
 
     useEffect(() => {
-        fetch("./uva_cs_audit_cleaned.json")
+        fetch("./json_files/uva_cs_audit_cleaned.json")
             .then((res) => res.json())
             .then((data) => setAuditData(data))
             .catch((err) => console.error("Error loading JSON:", err));
