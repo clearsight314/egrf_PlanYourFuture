@@ -52,9 +52,16 @@
         );
     };
 
-    const SubGraph = ({ graphData, allowedCourseIds, reqType, anyCount }) => {
-        const [takenNodes, setTakenNodes] = useState(new Set());
-
+    const SubGraph = ({
+        graphData,
+        allowedCourseIds,
+        reqType,
+        anyCount,
+        globalTakenCourses,
+        toggleCourse,
+        inheritedDisabled,
+        inheritedGrayedOut,
+    }) => {
         if (!graphData || !graphData.nodes) return null;
 
         let filteredNodes = graphData.nodes.filter((n) =>
@@ -139,15 +146,9 @@
             return acc;
         }, {});
 
-        const handleNodeClick = (nodeId) => {
-            const newTaken = new Set(takenNodes);
-            if (newTaken.has(nodeId)) {
-                newTaken.delete(nodeId);
-            } else {
-                newTaken.add(nodeId);
-            }
-            setTakenNodes(newTaken);
-        };
+        const takenInGraphCount = positionedNodes.filter((n) =>
+            globalTakenCourses.has(n.id),
+        ).length;
 
         return (
             <div
@@ -223,18 +224,26 @@
                     </svg>
 
                     {positionedNodes.map((node) => {
-                        const isTaken = takenNodes.has(node.id);
+                        const isTaken = globalTakenCourses.has(node.id);
                         let isDisabled = false;
                         let isGrayedOut = false;
 
                         if (reqType === "ANY") {
-                            if (takenNodes.size >= anyCount && !isTaken) {
+                            if (
+                                (inheritedDisabled ||
+                                    takenInGraphCount >= anyCount) &&
+                                !isTaken
+                            ) {
                                 isDisabled = true;
                                 isGrayedOut = true;
                             }
                         } else {
                             // "ALL" Requirement
-                            if (takenNodes.size === positionedNodes.length) {
+                            if (
+                                inheritedGrayedOut ||
+                                (takenInGraphCount === positionedNodes.length &&
+                                    positionedNodes.length > 0)
+                            ) {
                                 isGrayedOut = true;
                             }
                         }
@@ -246,7 +255,7 @@
                                 isTaken={isTaken}
                                 isDisabled={isDisabled}
                                 isGrayedOut={isGrayedOut}
-                                onClick={handleNodeClick}
+                                onClick={toggleCourse}
                             />
                         );
                     })}
@@ -260,6 +269,11 @@
         graphData,
         isRoot = false,
         color = "#1e293b",
+        depth = 1,
+        globalTakenCourses,
+        toggleCourse,
+        inheritedDisabled = false,
+        inheritedGrayedOut = false,
     }) => {
         const [isExpanded, setIsExpanded] = useState(isRoot);
         const [showGraph, setShowGraph] = useState(false);
@@ -303,36 +317,141 @@
         };
 
         const nodeCourses = extractAllCourses();
-        const hasCourses = nodeCourses.length > 1;
+        const allowGraph = nodeCourses.length > 1 && depth === 1;
+
+        const isClassNode = !hasChildren && nodeCourses.length === 1;
+        const courseId = isClassNode ? nodeCourses[0] : null;
+        const isTaken = isClassNode ? globalTakenCourses.has(courseId) : false;
+
+        const extractClickableTreeCourses = () => {
+            const clickable = new Set();
+            const courseRegex = /[A-Z]{2,4}\s\d{4}/g;
+            const traverse = (n) => {
+                const hasChild = n.children && n.children.length > 0;
+                const rawString = JSON.stringify(n);
+                const matches = rawString.match(courseRegex) || [];
+                const uniqueMatches = [...new Set(matches)];
+
+                if (!hasChild && uniqueMatches.length === 1) {
+                    clickable.add(uniqueMatches[0]);
+                } else if (hasChild) {
+                    n.children.forEach(traverse);
+                }
+            };
+            traverse(node);
+            return [...clickable];
+        };
+
+        const treeClickables = extractClickableTreeCourses();
+        const graphClickables =
+            graphData && graphData.nodes
+                ? nodeCourses.filter((c) =>
+                      graphData.nodes.some((n) => n.id === c),
+                  )
+                : [];
+
+        const actionableCourses = [
+            ...new Set([...treeClickables, ...graphClickables]),
+        ];
+
+        const takenActionableCount = actionableCourses.filter((c) =>
+            globalTakenCourses.has(c),
+        ).length;
+
+        let isSatisfiedAny = false;
+        let isSatisfiedAll = false;
+
+        if (reqType === "ANY") {
+            isSatisfiedAny = takenActionableCount >= anyCount;
+        } else {
+            isSatisfiedAll =
+                takenActionableCount === actionableCourses.length &&
+                actionableCourses.length > 0;
+        }
+
+        const passDownDisabled = inheritedDisabled || isSatisfiedAny;
+        const passDownGrayedOut = inheritedGrayedOut || isSatisfiedAll;
+
+        let nodeBg = hasChildren && !isExpanded ? "#f8fafc" : "#ffffff";
+        let nodeBorder = color;
+        let nodeTextColor = "#1e293b";
+        let nodeOpacity = 1;
+        let isNodeDisabled = false;
+
+        if (isClassNode) {
+            isNodeDisabled = inheritedDisabled && !isTaken;
+            let isNodeGrayedOut = inheritedGrayedOut || isNodeDisabled;
+
+            if (isTaken) {
+                if (isNodeGrayedOut) {
+                    nodeBg = "#f1f5f9";
+                    nodeBorder = "#94a3b8";
+                    nodeTextColor = "#475569";
+                } else {
+                    nodeBg = "#dcfce7";
+                    nodeBorder = "#16a34a";
+                    nodeTextColor = "#14532d";
+                }
+            } else if (isNodeGrayedOut || isNodeDisabled) {
+                nodeBg = "#f8fafc";
+                nodeBorder = "#cbd5e1";
+                nodeTextColor = "#94a3b8";
+                nodeOpacity = 0.5;
+            }
+        }
 
         return (
             <li>
                 <div
                     className="node-box"
                     style={{
-                        borderColor: color,
-                        backgroundColor:
-                            hasChildren && !isExpanded ? "#f8fafc" : "#ffffff",
+                        borderColor: isClassNode ? nodeBorder : color,
+                        backgroundColor: isClassNode
+                            ? nodeBg
+                            : hasChildren && !isExpanded
+                              ? "#f8fafc"
+                              : "#ffffff",
+                        color: isClassNode ? nodeTextColor : "#1e293b",
+                        opacity: isClassNode ? nodeOpacity : 1,
                         borderBottomWidth:
                             hasChildren && !isExpanded ? "4px" : "1px",
                         maxWidth: showGraph ? "100%" : "240px",
                         width: showGraph ? "fit-content" : "auto",
+                        cursor: isClassNode
+                            ? isNodeDisabled
+                                ? "not-allowed"
+                                : "pointer"
+                            : "default",
+
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
+                    }}
+                    onClick={(e) => {
+                        if (isClassNode) {
+                            e.stopPropagation();
+                            if (!isNodeDisabled) {
+                                toggleCourse(courseId);
+                            }
+                        }
                     }}
                 >
                     {!isRoot && <div className="arrow-down"></div>}
 
                     <div
-                        style={{
-                            cursor: "pointer",
-                            width: "100%",
-                            padding: "4px",
+                        onClick={() => {
+                            if (!isClassNode) {
+                                setIsExpanded(!isExpanded);
+                            }
                         }}
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        style={{ cursor: isClassNode ? "inherit" : "pointer" }}
                     >
-                        <div style={{ fontWeight: "bold" }}>{reqName}</div>
+                        <div style={{ fontWeight: "bold" }}>
+                            {isClassNode && isTaken && (
+                                <span style={{ marginRight: "6px" }}>✓</span>
+                            )}
+                            {reqName}
+                        </div>
 
                         {hasChildren && (
                             <div
@@ -350,7 +469,7 @@
                         )}
                     </div>
 
-                    {hasCourses && (
+                    {allowGraph && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -373,7 +492,7 @@
                         </button>
                     )}
 
-                    {showGraph && (
+                    {showGraph && allowGraph && (
                         <div
                             onClick={(e) => e.stopPropagation()}
                             style={{ width: "100%", cursor: "default" }}
@@ -383,6 +502,10 @@
                                 allowedCourseIds={nodeCourses}
                                 reqType={reqType}
                                 anyCount={anyCount}
+                                globalTakenCourses={globalTakenCourses}
+                                toggleCourse={toggleCourse}
+                                inheritedDisabled={passDownDisabled}
+                                inheritedGrayedOut={passDownGrayedOut}
                             />
                         </div>
                     )}
@@ -396,6 +519,11 @@
                                 node={childNode}
                                 graphData={graphData}
                                 color={color}
+                                depth={depth + 1}
+                                globalTakenCourses={globalTakenCourses}
+                                toggleCourse={toggleCourse}
+                                inheritedDisabled={passDownDisabled}
+                                inheritedGrayedOut={passDownGrayedOut}
                             />
                         ))}
                     </ul>
@@ -407,6 +535,20 @@
     const FullRequirementTree = () => {
         const [auditData, setAuditData] = useState([]);
         const [graphData, setGraphData] = useState(null);
+
+        const [globalTakenCourses, setGlobalTakenCourses] = useState(new Set());
+
+        const toggleCourse = (courseId) => {
+            setGlobalTakenCourses((prev) => {
+                const next = new Set(prev);
+                if (next.has(courseId)) {
+                    next.delete(courseId);
+                } else {
+                    next.add(courseId);
+                }
+                return next;
+            });
+        };
 
         useEffect(() => {
             fetch("./json_files/uva_cs_audit_cleaned.json")
@@ -479,6 +621,10 @@
                                             node={node}
                                             graphData={graphData}
                                             color="#ea580c"
+                                            globalTakenCourses={
+                                                globalTakenCourses
+                                            }
+                                            toggleCourse={toggleCourse}
                                         />
                                     ))}
                                 </ul>
